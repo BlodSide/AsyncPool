@@ -1,9 +1,11 @@
-#include <mutex>
 #include <condition_variable>
 #include <functional>
+#include <future>
+#include <memory>
+#include <mutex>
 #include <queue>
 #include <thread>
-#include <future> 
+
 
 class AsyncPool {
 private:
@@ -22,9 +24,7 @@ public:
       std::thread([payload_ = payload] {
         std::unique_lock<std::mutex> lck(payload_->mutex);
         while (true) {
-          bool need_wait = true;
           while (!payload_->tasks.empty()) {
-            need_wait = false;
             auto top_task = std::move(payload_->tasks.front());
             payload_->tasks.pop();
             lck.unlock();
@@ -34,9 +34,7 @@ public:
           if (payload_->is_shutdown) {
             break;
           }
-          if (need_wait) {
-            payload_->cond.wait(lck);
-          }
+          payload_->cond.wait(lck);
         }
       }).detach();
     }
